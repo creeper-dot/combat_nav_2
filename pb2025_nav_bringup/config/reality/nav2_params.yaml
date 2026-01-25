@@ -99,7 +99,7 @@ sensor_scan_generation:
     use_sim_time: False
     lidar_frame: "front_mid360"
     base_frame: "base_footprint"
-    robot_base_frame: "gimbal_yaw"
+    robot_base_frame: "base_yaw"
 
 terrain_analysis:
   ros__parameters:
@@ -157,9 +157,9 @@ fake_vel_transform:
     robot_base_frame: "gimbal_yaw"
     fake_robot_base_frame: "gimbal_yaw_fake"
     input_cmd_vel_topic: "cmd_vel_nav2_result"
-    output_cmd_vel_topic: "cmd_vel"
-    cmd_spin_topic: "cmd_spin"
-    init_spin_speed: 10000.0
+    output_cmd_vel_topic: "navigation_cmd"
+    cmd_chassis_status_topic: "cmd_chassis_status"
+    init_cmd_chassis_status: 0
 
 small_gicp_relocalization:
   ros__parameters:
@@ -172,7 +172,7 @@ small_gicp_relocalization:
     map_frame: "map"
     odom_frame: "odom"
     base_frame: "base_footprint"
-    robot_base_frame: "gimbal_yaw"
+    robot_base_frame: "base_yaw"
     lidar_frame: "front_mid360"
     init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # [x, y, z, roll, pitch, yaw]
     # The prior_pcd_file does not need to be specified since it going to be set by defaults in launch.
@@ -273,7 +273,7 @@ bt_navigator:
   ros__parameters:
     use_sim_time: False
     global_frame: map
-    robot_base_frame: gimbal_yaw_fake
+    robot_base_frame: base_yaw_fake
     odom_topic: odometry
     bt_loop_duration: 10
     default_server_timeout: 100
@@ -389,7 +389,7 @@ local_costmap:
       update_frequency: 10.0
       publish_frequency: 5.0
       global_frame: odom
-      robot_base_frame: gimbal_yaw_fake
+      robot_base_frame: base_yaw_fake
       rolling_window: true
       width: 5
       height: 5
@@ -439,7 +439,7 @@ global_costmap:
       update_frequency: 5.0
       publish_frequency: 2.0
       global_frame: map
-      robot_base_frame: gimbal_yaw_fake
+      robot_base_frame: base_yaw_fake
       robot_radius: 0.2
       resolution: 0.05
       track_unknown_space: true
@@ -538,7 +538,7 @@ behavior_server:
       plugin: "nav2_behaviors/AssistedTeleop"
     local_frame: odom
     global_frame: map
-    robot_base_frame: gimbal_yaw_fake
+    robot_base_frame: base_yaw_fake
     transform_tolerance: 0.1
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
@@ -578,7 +578,7 @@ velocity_smoother:
 pb_teleop_twist_joy_node:
   ros__parameters:
     use_sim_time: False
-    robot_base_frame: gimbal_yaw
+    robot_base_frame: base_yaw
     control_mode: auto_control    # Option: auto_control, manual_control
 
     require_enable_button: true
