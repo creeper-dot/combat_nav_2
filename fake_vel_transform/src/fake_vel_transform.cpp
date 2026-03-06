@@ -35,7 +35,7 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
   cmd_vel_chassis_pub_ =
-    this->create_publisher<pb_rm_interfaces::msg::NavigationCmd>(output_cmd_vel_topic_, 1);
+    this->create_publisher<combat_rm_interfaces::msg::NavigationCmd>(output_cmd_vel_topic_, 1);
 
   cmd_chassis_status_sub_ = this->create_subscription<example_interfaces::msg::UInt8>(
     cmd_chassis_status_topic_, 1, std::bind(&FakeVelTransform::cmdChassisStatusCallback, this, std::placeholders::_1));
@@ -130,10 +130,10 @@ void FakeVelTransform::publishTransform()
   tf_broadcaster_->sendTransform(t);
 }
 
-pb_rm_interfaces::msg::NavigationCmd FakeVelTransform::transformVelocity(
+combat_rm_interfaces::msg::NavigationCmd FakeVelTransform::transformVelocity(
   const geometry_msgs::msg::Twist::SharedPtr & twist, float yaw_diff)
 {
-  pb_rm_interfaces::msg::NavigationCmd aft_tf_vel;
+  combat_rm_interfaces::msg::NavigationCmd aft_tf_vel;
   aft_tf_vel.twist.angular.z = twist->angular.z;
   aft_tf_vel.twist.linear.x = twist->linear.x * cos(yaw_diff) + twist->linear.y * sin(yaw_diff);
   aft_tf_vel.twist.linear.y = -twist->linear.x * sin(yaw_diff) + twist->linear.y * cos(yaw_diff);

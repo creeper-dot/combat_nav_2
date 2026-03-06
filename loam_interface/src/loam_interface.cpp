@@ -50,7 +50,7 @@ LoamInterfaceNode::LoamInterfaceNode(const rclcpp::NodeOptions & options)
     state_estimation_topic_, 5,
     std::bind(&LoamInterfaceNode::odometryCallback, this, std::placeholders::_1));
 }
-
+ 
 void LoamInterfaceNode::pointCloudCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
   // NOTE: Input point cloud message is based on the `lidar_odom`

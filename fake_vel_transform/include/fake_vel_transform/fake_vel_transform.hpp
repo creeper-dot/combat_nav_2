@@ -28,7 +28,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "tf2_ros/transform_broadcaster.h"
-#include "pb_rm_interfaces/msg/navigation_cmd.hpp"
+#include "combat_rm_interfaces/msg/navigation_cmd.hpp"
 
 namespace fake_vel_transform
 {
@@ -46,7 +46,7 @@ private:
   void cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void cmdChassisStatusCallback(example_interfaces::msg::UInt8::SharedPtr msg);
   void publishTransform();
-  pb_rm_interfaces::msg::NavigationCmd transformVelocity(
+  combat_rm_interfaces::msg::NavigationCmd transformVelocity(
     const geometry_msgs::msg::Twist::SharedPtr & twist, float yaw_diff);
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
@@ -58,7 +58,7 @@ private:
     message_filters::sync_policies::ApproximateTime<nav_msgs::msg::Odometry, nav_msgs::msg::Path>;
   std::unique_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
-  rclcpp::Publisher<pb_rm_interfaces::msg::NavigationCmd>::SharedPtr cmd_vel_chassis_pub_;
+  rclcpp::Publisher<combat_rm_interfaces::msg::NavigationCmd>::SharedPtr cmd_vel_chassis_pub_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
