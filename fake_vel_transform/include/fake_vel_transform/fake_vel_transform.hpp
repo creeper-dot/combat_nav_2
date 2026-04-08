@@ -49,7 +49,8 @@ private:
   void publishTransform();
   combat_rm_interfaces::msg::NavigationCmd transformVelocity(
     const geometry_msgs::msg::Twist::SharedPtr & twist, float yaw_diff);
-    void publishExpectedVel(const combat_rm_interfaces::msg::NavigationCmd & cmd);// 发布预期速度
+
+    void publishActualVel(const nav_msgs::msg::Odometry::ConstSharedPtr & odom_msg);// 发布实际速度 --- IGNORE ---
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<example_interfaces::msg::UInt8>::SharedPtr cmd_chassis_status_sub_;
@@ -61,7 +62,7 @@ private:
   std::unique_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
 
   rclcpp::Publisher<combat_rm_interfaces::msg::NavigationCmd>::SharedPtr cmd_vel_chassis_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr expected_vel_pub_;// 发布预期速度
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr actual_vel_pub_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -75,6 +76,7 @@ private:
   std::string input_cmd_vel_topic_;
   std::string output_cmd_vel_topic_;
   std::string expected_vel_topic_;
+  std::string actual_vel_topic_;
   uint8_t cmd_chassis_status_;
 
   std::mutex cmd_vel_mutex_;
