@@ -83,7 +83,14 @@ private:
   geometry_msgs::msg::Twist::SharedPtr latest_cmd_vel_;
   double current_robot_base_angle_;
   rclcpp::Time last_controller_activate_time_;
+
+  rclcpp::Time last_odom_time_;
+  double last_odom_x_{0.0};
+  double last_odom_y_{0.0};
+  double last_odom_yaw_{0.0};
+  bool has_last_odom_{false}; // 标记是否已经收到了第一帧
 };
+
 
 }  // namespace fake_vel_transform
 
