@@ -22,6 +22,7 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
   this->declare_parameter<std::string>("input_cmd_vel_topic", "");
   this->declare_parameter<std::string>("output_cmd_vel_topic", "");
   this->declare_parameter<uint8_t>("init_cmd_chassis_status", 0);
+  this->declare_parameter<std::string>("expected_vel_topic", "expected_vel");// 发布预期速度
 
   this->get_parameter("robot_base_frame", robot_base_frame_);
   this->get_parameter("fake_robot_base_frame", fake_robot_base_frame_);
@@ -31,11 +32,14 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
   this->get_parameter("input_cmd_vel_topic", input_cmd_vel_topic_);
   this->get_parameter("output_cmd_vel_topic", output_cmd_vel_topic_);
   this->get_parameter("init_cmd_chassis_status", cmd_chassis_status_);
+  this->get_parameter("expected_vel_topic", expected_vel_topic_);
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
   cmd_vel_chassis_pub_ =
     this->create_publisher<combat_rm_interfaces::msg::NavigationCmd>(output_cmd_vel_topic_, 1);
+  expected_vel_pub_ =
+    this->create_publisher<geometry_msgs::msg::TwistStamped>(expected_vel_topic_, 1);
 
   cmd_chassis_status_sub_ = this->create_subscription<example_interfaces::msg::UInt8>(
     cmd_chassis_status_topic_, 1, std::bind(&FakeVelTransform::cmdChassisStatusCallback, this, std::placeholders::_1));
@@ -87,6 +91,7 @@ void FakeVelTransform::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr
     // If received velocity cannot be synchronized, publish it directly
     auto aft_tf_vel = transformVelocity(msg, current_robot_base_angle_);
     cmd_vel_chassis_pub_->publish(aft_tf_vel);
+    publishExpectedVel(aft_tf_vel);//同步发布预期速度
   } else {
     latest_cmd_vel_ = msg;
   }
@@ -116,6 +121,7 @@ void FakeVelTransform::syncCallback(
   auto aft_tf_vel = transformVelocity(current_cmd_vel, yaw_diff);
 
   cmd_vel_chassis_pub_->publish(aft_tf_vel);
+  publishExpectedVel(aft_tf_vel);//同步发布预期速度
 }
 
 void FakeVelTransform::publishTransform()
@@ -139,6 +145,17 @@ combat_rm_interfaces::msg::NavigationCmd FakeVelTransform::transformVelocity(
   aft_tf_vel.twist.linear.y = -twist->linear.x * sin(yaw_diff) + twist->linear.y * cos(yaw_diff);
   aft_tf_vel.chassis_status = cmd_chassis_status_;
   return aft_tf_vel;
+}
+
+//辅助函数：发布预期速度，供其他节点订阅使用
+void FakeVelTransform::publishExpectedVel(const combat_rm_interfaces::msg::NavigationCmd & cmd)
+{
+  geometry_msgs::msg::TwistStamped expected_vel_msg;
+  expected_vel_msg.header.stamp = this->get_clock()->now();
+  expected_vel_msg.header.frame_id = robot_base_frame_; 
+  expected_vel_msg.twist = cmd.twist;
+  
+  expected_vel_pub_->publish(expected_vel_msg);
 }
 
 }  // namespace fake_vel_transform
