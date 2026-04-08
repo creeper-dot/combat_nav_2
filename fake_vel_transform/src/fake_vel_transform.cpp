@@ -150,16 +150,53 @@ combat_rm_interfaces::msg::NavigationCmd FakeVelTransform::transformVelocity(
   return aft_tf_vel;
 }
 
-/// 发布实际速度的函数实现，订阅里程计消息并将其中的速度信息发布为geometry_msgs::msg::TwistStamped类型的消息
+//【替换】：实现辅助函数，通过前后位置差(微分)计算实际速度并发布
 void FakeVelTransform::publishActualVel(const nav_msgs::msg::Odometry::ConstSharedPtr & odom_msg)
 {
-  geometry_msgs::msg::TwistStamped actual_vel_msg;
-  actual_vel_msg.header.stamp = this->get_clock()->now();
-  actual_vel_msg.header.frame_id = robot_base_frame_; 
+  rclcpp::Time current_time = odom_msg->header.stamp;
+  double current_x = odom_msg->pose.pose.position.x;
+  double current_y = odom_msg->pose.pose.position.y;
+  double current_yaw = tf2::getYaw(odom_msg->pose.pose.orientation);
+
+  if (!has_last_odom_) {
+    last_odom_time_ = current_time;
+    last_odom_x_ = current_x;
+    last_odom_y_ = current_y;
+    last_odom_yaw_ = current_yaw;
+    has_last_odom_ = true;
+    return; 
+  }
+
+  double dt = (current_time - last_odom_time_).seconds();
+  if (dt <= 0.0) return; 
+
+  double dx = current_x - last_odom_x_;
+  double dy = current_y - last_odom_y_;
   
-  actual_vel_msg.twist = odom_msg->twist.twist;
+  // 计算角度差，并进行归一化处理
+  double dyaw = current_yaw - last_odom_yaw_;
+  while (dyaw > M_PI) dyaw -= 2.0 * M_PI;
+  while (dyaw < -M_PI) dyaw += 2.0 * M_PI;
+
+  // 把世界坐标系下的位移，投影(旋转)回机器人自身的朝向坐标系
+  double v_x = (dx * cos(current_yaw) + dy * sin(current_yaw)) / dt;
+  double v_y = (-dx * sin(current_yaw) + dy * cos(current_yaw)) / dt;
+  double w_z = dyaw / dt;
+
+  geometry_msgs::msg::TwistStamped actual_vel_msg;
+  actual_vel_msg.header.stamp = current_time;
+  actual_vel_msg.header.frame_id = robot_base_frame_; 
+  actual_vel_msg.twist.linear.x = v_x;
+  actual_vel_msg.twist.linear.y = v_y;
+  actual_vel_msg.twist.angular.z = w_z;
   
   actual_vel_pub_->publish(actual_vel_msg);
+
+  // 更新上一次的里程计信息
+  last_odom_time_ = current_time;
+  last_odom_x_ = current_x;
+  last_odom_y_ = current_y;
+  last_odom_yaw_ = current_yaw;
 }
 
 }  // namespace fake_vel_transform
