@@ -36,6 +36,8 @@ FakeVelTransform::FakeVelTransform(const rclcpp::NodeOptions & options)
   this->get_parameter("expected_vel_topic", expected_vel_topic_);
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+  tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
   cmd_vel_chassis_pub_ =
     this->create_publisher<combat_rm_interfaces::msg::NavigationCmd>(output_cmd_vel_topic_, 1);
@@ -150,53 +152,59 @@ combat_rm_interfaces::msg::NavigationCmd FakeVelTransform::transformVelocity(
   return aft_tf_vel;
 }
 
-//【替换】：实现辅助函数，通过前后位置差(微分)计算实际速度并发布
 void FakeVelTransform::publishActualVel(const nav_msgs::msg::Odometry::ConstSharedPtr & odom_msg)
 {
   rclcpp::Time current_time = odom_msg->header.stamp;
-  double current_x = odom_msg->pose.pose.position.x;
-  double current_y = odom_msg->pose.pose.position.y;
-  double current_yaw = tf2::getYaw(odom_msg->pose.pose.orientation);
 
-  if (!has_last_odom_) {
+  if (!has_last_time_) {
     last_odom_time_ = current_time;
-    last_odom_x_ = current_x;
-    last_odom_y_ = current_y;
-    last_odom_yaw_ = current_yaw;
-    has_last_odom_ = true;
-    return; 
+    has_last_time_ = true;
+    return;
   }
 
   double dt = (current_time - last_odom_time_).seconds();
-  if (dt <= 0.0) return; 
+  if (dt <= 1e-4) return; 
 
-  double dx = current_x - last_odom_x_;
-  double dy = current_y - last_odom_y_;
+  geometry_msgs::msg::TransformStamped transform;
+  try {
+    // 目标坐标系：当前的 fake_robot_base_frame_
+    // 目标时间：current_time
+    // 源坐标系：过去的 fake_robot_base_frame_
+    // 源时间：last_odom_time_
+    // 固定的参考坐标系：odom_topic_ 
+    transform = tf_buffer_->lookupTransform(
+      fake_robot_base_frame_, current_time,
+      fake_robot_base_frame_, last_odom_time_,
+      "camera_init", 
+      tf2::durationFromSec(0.05));
+  } catch (tf2::TransformException & ex) {
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "TF Lookup failed: %s", ex.what());
+    last_odom_time_ = current_time;
+    return;
+  }
+
+  double v_x = transform.transform.translation.x / dt;
+  double v_y = transform.transform.translation.y / dt;
   
-  // 计算角度差，并进行归一化处理
-  double dyaw = current_yaw - last_odom_yaw_;
-  while (dyaw > M_PI) dyaw -= 2.0 * M_PI;
-  while (dyaw < -M_PI) dyaw += 2.0 * M_PI;
+  double roll, pitch, yaw;
+  tf2::Quaternion q(
+    transform.transform.rotation.x, transform.transform.rotation.y,
+    transform.transform.rotation.z, transform.transform.rotation.w);
+  tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+  double w_z = yaw / dt;
 
-  // 把世界坐标系下的位移，投影(旋转)回机器人自身的朝向坐标系
-  double v_x = (dx * cos(current_yaw) + dy * sin(current_yaw)) / dt;
-  double v_y = (-dx * sin(current_yaw) + dy * cos(current_yaw)) / dt;
-  double w_z = dyaw / dt;
-
+  // 打包发布
   geometry_msgs::msg::TwistStamped actual_vel_msg;
   actual_vel_msg.header.stamp = current_time;
-  actual_vel_msg.header.frame_id = robot_base_frame_; 
+  actual_vel_msg.header.frame_id = fake_robot_base_frame_; 
   actual_vel_msg.twist.linear.x = v_x;
   actual_vel_msg.twist.linear.y = v_y;
   actual_vel_msg.twist.angular.z = w_z;
   
   actual_vel_pub_->publish(actual_vel_msg);
 
-  // 更新上一次的里程计信息
+  // 更新时间
   last_odom_time_ = current_time;
-  last_odom_x_ = current_x;
-  last_odom_y_ = current_y;
-  last_odom_yaw_ = current_yaw;
 }
 
 }  // namespace fake_vel_transform
