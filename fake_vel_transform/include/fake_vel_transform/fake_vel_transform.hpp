@@ -65,6 +65,11 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr actual_vel_pub_;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+
+  rclcpp::Time last_odom_time_;
+  bool has_last_time_{false};
 
   rclcpp::TimerBase::SharedPtr timer_;
 
